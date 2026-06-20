@@ -1,0 +1,40 @@
+Jane Smith
+Email: jane.smith@example.com | Phone: +1-555-123-4567
+GitHub: github.com/janesmith | LinkedIn: linkedin.com/in/janesmith
+
+SUMMARY
+Senior Backend Engineer with 7 years of experience building scalable APIs and
+microservices. Passionate about clean code, system design, and open source.
+
+SKILLS
+Python, FastAPI, Django, PostgreSQL, Redis, Docker, Kubernetes, AWS, REST API,
+Git, CI/CD, Pytest, LangChain, Docker Compose, Terraform, Prometheus, Grafana,
+Microservices, System Design, SQL, NoSQL, Message Queues
+
+EXPERIENCE
+
+Senior Backend Engineer | TechCorp Inc. | Jan 2021 - Present
+- Architected microservices platform serving 10M+ daily requests
+- Reduced API latency by 60% through Redis caching and query optimization
+- Led migration from monolith to Kubernetes-based microservices
+- Technologies: Python, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, AWS
+
+Backend Engineer | StartupXYZ | Jun 2018 - Dec 2020
+- Built REST APIs serving 500K+ users
+- Implemented CI/CD pipelines reducing deployment time by 70%
+- Mentored junior engineers and conducted code reviews
+- Technologies: Python, Django, PostgreSQL, Docker, AWS
+
+Junior Developer | WebStudio | Aug 2016 - May 2018
+- Developed backend features for e-commerce platform
+- Wrote unit tests achieving 90% code coverage
+- Technologies: Python, Flask, MySQL, Git
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Technology, 2016
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect - Associate (2022)
+- Certified Kubernetes Administrator (2021)
+- Docker Certified Associate (2020)
