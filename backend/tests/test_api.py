@@ -251,14 +251,14 @@ class TestSocialEndpoints:
         """Test social analysis with mocked external APIs."""
         with patch("httpx.AsyncClient.get") as mock_get:
             mock_get.side_effect = [
-                AsyncMock(status_code=200, json=AsyncMock(return_value=mock_github_user_response)),
-                AsyncMock(status_code=200, json=AsyncMock(return_value=mock_github_repos_response)),
+                MagicMock(status_code=200, json=MagicMock(return_value=mock_github_user_response)),
+                MagicMock(status_code=200, json=MagicMock(return_value=mock_github_repos_response)),
             ]
 
             with patch("httpx.AsyncClient.post") as mock_post:
-                mock_post.return_value = AsyncMock(
+                mock_post.return_value = MagicMock(
                     status_code=200,
-                    json=AsyncMock(return_value=mock_openai_chat_response),
+                    json=MagicMock(return_value=mock_openai_chat_response),
                 )
 
                 with patch("backend.core.config.get_settings") as mock_settings:
@@ -431,7 +431,3 @@ class TestOpenAPI:
         response = client.get("/docs")
         assert response.status_code == 200
         assert "swagger" in response.text.lower() or "openapi" in response.text.lower()
-
-
-# Need MagicMock import
-from unittest.mock import MagicMock

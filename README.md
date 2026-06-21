@@ -14,6 +14,7 @@ hiresignal/
 │   ├── models/        # Pydantic v2 schemas
 │   ├── core/          # Config, auth, cache, rate limiting
 │   └── tests/         # pytest suite (80%+ coverage)
+├── frontend/          # React dashboard for parallel candidate testing
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -26,6 +27,7 @@ hiresignal/
 | **Resume Scoring** | Parse PDF/DOCX resumes, score against job descriptions | `POST /api/v1/resume/score` |
 | **Social Intelligence** | Analyze GitHub, LinkedIn, Twitter via LangGraph agents | `POST /api/v1/social/analyze` |
 | **Candidate Evaluation** | Combine scores into final weighted report | `POST /api/v1/candidate/evaluate` |
+| **Frontend Dashboard** | Upload and evaluate multiple candidates in parallel | `http://127.0.0.1:5173` |
 
 ## Quick Start
 
@@ -49,8 +51,9 @@ cp .env.example .env
 docker-compose up --build
 
 # 4. API is available at http://localhost:8000
-# 5. API docs at http://localhost:8000/docs
-# 6. Flower (Celery monitoring) at http://localhost:5555
+# 5. Frontend dashboard at http://localhost:5173
+# 6. API docs at http://localhost:8000/docs
+# 7. Flower (Celery monitoring) at http://localhost:5555
 ```
 
 ### Option 2: Local Development
@@ -76,9 +79,35 @@ cp ../.env.example ../.env
 # 5. Run the application
 uvicorn backend.api.main:app --reload --port 8000
 
-# 6. Run tests
+# 6. Start the frontend dashboard in a second terminal
+cd ../frontend
+npm install
+npm run dev
+
+# 7. Run backend tests
+cd ../backend
 pytest tests/ -v --tb=short
 ```
+
+## Frontend Dashboard
+
+The React dashboard lives in `frontend/` and gives you an end-to-end candidate testing UI:
+
+- Batch upload PDF/DOCX resumes.
+- Configure API URL, API key, job title, and job description.
+- Add GitHub usernames manually or paste one username per line for a batch.
+- Run multiple candidate pipelines in parallel with a configurable concurrency limit.
+- Review per-candidate logs, warnings, scores, final tier, recommendations, and export CSV/JSON results.
+
+Run it locally:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173` while the API is running on `http://127.0.0.1:8000`.
 
 ## API Documentation
 
