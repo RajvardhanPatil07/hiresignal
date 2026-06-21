@@ -32,19 +32,13 @@ class TestFetchGitHub:
         """Test successful GitHub profile fetch."""
         state = AgentState(request=social_analyze_request)
 
-        call_count = 0
-        async def mock_json():
-            nonlocal call_count
-            call_count += 1
-            return mock_github_user_response if call_count == 1 else mock_github_repos_response
-
         class MockResponse:
             status_code: int
             _data: Any
             def __init__(self, status_code: int, data: Any):
                 self.status_code = status_code
                 self._data = data
-            async def json(self) -> Any:
+            def json(self) -> Any:
                 return self._data
             def raise_for_status(self) -> None:
                 pass
@@ -198,7 +192,7 @@ class TestSynthesis:
         with patch("backend.social.agents.get_settings", return_value=settings_mock):
             class MockResponse:
                 status_code = 200
-                async def json(self) -> Any:
+                def json(self) -> Any:
                     return mock_openai_chat_response
                 def raise_for_status(self) -> None:
                     pass
@@ -268,7 +262,7 @@ class TestSynthesis:
 
             class MockResponse:
                 status_code = 200
-                async def json(self) -> Any:
+                def json(self) -> Any:
                     return bad_response
                 def raise_for_status(self) -> None:
                     pass

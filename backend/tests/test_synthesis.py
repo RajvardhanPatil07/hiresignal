@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -276,9 +276,9 @@ class TestEvaluateCandidate:
             mock_settings.return_value.LLM_MODEL = "gpt-4o-mini"
 
             with patch("httpx.AsyncClient.post") as mock_post:
-                mock_post.return_value = AsyncMock(
+                mock_post.return_value = MagicMock(
                     status_code=200,
-                    json=AsyncMock(return_value={
+                    json=MagicMock(return_value={
                         "choices": [{
                             "message": {
                                 "content": "This candidate shows strong technical skills and active community engagement, making them a solid fit for the role.",

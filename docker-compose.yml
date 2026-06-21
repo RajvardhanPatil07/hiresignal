@@ -5,6 +5,26 @@ version: "3.8"
 
 services:
   # -------------------------------------------------------------------------
+  # React Frontend Dashboard
+  # -------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_HIRESIGNAL_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:8000}
+        VITE_HIRESIGNAL_API_KEY: ${API_KEY:-dev-api-key-change-in-production}
+    container_name: hiresignal-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - hiresignal-network
+
+  # -------------------------------------------------------------------------
   # FastAPI Application
   # -------------------------------------------------------------------------
   api:

@@ -81,7 +81,7 @@ async def fetch_github(state: AgentState) -> AgentState:
                 return state
 
             user_resp.raise_for_status()
-            user_data = await user_resp.json()
+            user_data = user_resp.json()
 
             # Repositories
             repos_resp = await client.get(
@@ -89,7 +89,7 @@ async def fetch_github(state: AgentState) -> AgentState:
                 headers={"Accept": "application/vnd.github.v3+json"},
                 params={"sort": "updated", "per_page": 30},
             )
-            repos_data = await repos_resp.json() if repos_resp.status_code == 200 else []
+            repos_data = repos_resp.json() if repos_resp.status_code == 200 else []
 
             repos: list[GitHubRepo] = []
             languages: dict[str, int] = {}
@@ -349,7 +349,7 @@ Respond ONLY with valid JSON."""
                 },
             )
             response.raise_for_status()
-            result = await response.json()
+            result = response.json()
             content = result["choices"][0]["message"]["content"]
 
             # Parse JSON response
