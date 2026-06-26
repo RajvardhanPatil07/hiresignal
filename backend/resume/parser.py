@@ -6,6 +6,7 @@ import io
 import logging
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import pdfplumber
 from docx import Document
@@ -88,6 +89,77 @@ SENIOR_TITLE_PATTERNS: list[re.Pattern] = [
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 PHONE_PATTERN = re.compile(r"[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}")
 YEAR_PATTERN = re.compile(r"\b(19[8-9]\d|20[0-3]\d)\b")
+PROFILE_URL_PATTERN = re.compile(
+    r"(?:(?:https?://)?(?:www\.)?"
+    r"(?:github\.com|linkedin\.com|twitter\.com|x\.com|huggingface\.co|"
+    r"kaggle\.com|leetcode\.com|hackerrank\.com|codechef\.com|codeforces\.com)"
+    r"/[^\s<>\]\[()\"']+)",
+    re.I,
+)
+HTTP_URL_PATTERN = re.compile(r"^https?://", re.I)
+RESERVED_PROFILE_SEGMENTS: set[str] = {
+    "about",
+    "business",
+    "company",
+    "contact",
+    "explore",
+    "features",
+    "jobs",
+    "login",
+    "marketplace",
+    "orgs",
+    "pricing",
+    "problems",
+    "search",
+    "signup",
+    "topics",
+    "users",
+}
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    """Return values in first-seen order with case-insensitive duplicates removed."""
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        cleaned = value.strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower().rstrip("/")
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cleaned)
+    return deduped
+
+
+def _extract_uri_values(value: Any) -> list[str]:
+    """Extract URL strings from nested PDF/DOCX metadata structures."""
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except UnicodeDecodeError:
+            return []
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if HTTP_URL_PATTERN.search(cleaned) or PROFILE_URL_PATTERN.search(cleaned):
+            return [cleaned]
+        return []
+
+    if isinstance(value, dict):
+        urls: list[str] = []
+        for nested in value.values():
+            urls.extend(_extract_uri_values(nested))
+        return urls
+
+    if isinstance(value, (list, tuple)):
+        urls: list[str] = []
+        for nested in value:
+            urls.extend(_extract_uri_values(nested))
+        return urls
+
+    return []
 
 
 def _validate_file(filename: str, content: bytes) -> str:
@@ -135,11 +207,18 @@ def _extract_pdf_text(content: bytes) -> str:
     """
     try:
         text_parts: list[str] = []
+        link_targets: list[str] = []
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text_parts.append(page_text)
+                for link in getattr(page, "hyperlinks", []) or []:
+                    link_targets.extend(_extract_uri_values(link))
+                for annot in getattr(page, "annots", []) or []:
+                    link_targets.extend(_extract_uri_values(annot))
+        if link_targets:
+            text_parts.append("\n".join(_dedupe_strings(link_targets)))
         return "\n".join(text_parts)
     except Exception as exc:
         logger.error("PDF extraction failed: %s", exc)
@@ -161,7 +240,12 @@ def _extract_docx_text(content: bytes) -> str:
     try:
         doc = Document(io.BytesIO(content))
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-        return "\n".join(paragraphs)
+        link_targets = [
+            rel.target_ref
+            for rel in doc.part.rels.values()
+            if "hyperlink" in rel.reltype and rel.target_ref
+        ]
+        return "\n".join([*paragraphs, *_dedupe_strings(link_targets)])
     except Exception as exc:
         logger.error("DOCX extraction failed: %s", exc)
         raise ResumeParsingError(f"Failed to extract DOCX text: {exc}") from exc
@@ -195,6 +279,60 @@ def _extract_phone(text: str) -> str:
     """Extract phone number from text."""
     match = PHONE_PATTERN.search(text)
     return match.group(0) if match else ""
+
+
+def _normalize_profile_url(url: str) -> str:
+    """Normalize a profile URL found in resume text."""
+    cleaned = url.strip().rstrip(".,;:)]}>\"'")
+    if not re.match(r"^https?://", cleaned, re.I):
+        cleaned = f"https://{cleaned}"
+    return cleaned
+
+
+def _is_supported_profile_url(url: str) -> bool:
+    """Return true when a URL points to a candidate profile or owned public work."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().removeprefix("www.")
+    parts = [part for part in parsed.path.split("/") if part]
+
+    if host == "github.com":
+        return bool(parts) and parts[0].lower() not in RESERVED_PROFILE_SEGMENTS
+    if host == "linkedin.com":
+        return len(parts) >= 2 and parts[0].lower() in {"in", "pub"}
+    if host in {"twitter.com", "x.com"}:
+        return bool(parts) and parts[0].lower() not in RESERVED_PROFILE_SEGMENTS
+    if host == "huggingface.co":
+        if not parts:
+            return False
+        if parts[0].lower() in {"models", "datasets", "spaces"}:
+            return len(parts) >= 2
+        return parts[0].lower() not in RESERVED_PROFILE_SEGMENTS
+    if host == "kaggle.com":
+        return bool(parts) and parts[0].lower() not in {"code", "competitions", "datasets", "models"}
+    if host == "leetcode.com":
+        return bool(parts) and parts[0].lower() not in {"contest", "discuss", "problems"}
+    if host == "hackerrank.com":
+        return bool(parts) and parts[0].lower() not in RESERVED_PROFILE_SEGMENTS
+    if host == "codechef.com":
+        return len(parts) >= 2 if parts and parts[0].lower() == "users" else bool(parts)
+    if host == "codeforces.com":
+        return len(parts) >= 2 if parts and parts[0].lower() in {"profile", "users"} else bool(parts)
+    return False
+
+
+def _extract_profile_urls(text: str) -> list[str]:
+    """Extract public profile URLs from resume text."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in PROFILE_URL_PATTERN.finditer(text):
+        url = _normalize_profile_url(match.group(0))
+        if not _is_supported_profile_url(url):
+            continue
+        key = url.lower().rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            urls.append(url)
+    return urls[:20]
 
 
 def _extract_name(text: str) -> str:
@@ -523,6 +661,7 @@ async def parse_resume(filename: str, content: bytes) -> ParsedResume:
         education=_extract_education(raw_text),
         certifications=_extract_certifications(raw_text),
         raw_text=raw_text,
+        profile_urls=_extract_profile_urls(raw_text),
         sections_found=sections_found,
         parse_quality=_determine_parse_quality(sections_found, raw_text),
     )

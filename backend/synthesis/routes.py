@@ -58,7 +58,7 @@ async def evaluate_candidate_endpoint(
     cached = await get_cached("candidate_eval", cache_input)
     if cached:
         logger.info("Returning cached evaluation for %s", request.candidate_email)
-        return CandidateEvaluateResponse(**cached, cached=True)
+        return CandidateEvaluateResponse(**{**cached, "cached": True})
 
     # Run evaluation
     logger.info(

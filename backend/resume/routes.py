@@ -18,6 +18,7 @@ from backend.resume.scorer import score_resume
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/resume", tags=["Resume Scoring"])
+RESUME_CACHE_VERSION = "embedded-profile-links-v1"
 
 
 @router.post(
@@ -62,6 +63,7 @@ async def score_resume_endpoint(
 
     # Build cache key
     cache_input = {
+        "version": RESUME_CACHE_VERSION,
         "filename": resume_file.filename,
         "content_hash": hash(content) & 0xFFFFFFFF,
         "job_description": job_description[:500],
@@ -72,7 +74,7 @@ async def score_resume_endpoint(
     cached = await get_cached("resume_score", cache_input)
     if cached:
         logger.info("Returning cached resume score for %s", resume_file.filename)
-        return ResumeScoreResponse(**cached, cached=True)
+        return ResumeScoreResponse(**{**cached, "cached": True})
 
     # Parse resume
     logger.info("Parsing resume: %s (%d bytes)", resume_file.filename, len(content))

@@ -1,6 +1,7 @@
 import type {
   CandidateEvaluateResponse,
   HealthStatus,
+  ProviderStatus,
   ResumeScoreResponse,
   SocialScoreResponse
 } from "./types";
@@ -19,9 +20,16 @@ interface ScoreResumeInput {
 
 interface AnalyzeSocialInput {
   candidateEmail: string;
+  candidateName: string;
   githubUsername: string;
   linkedinUrl?: string;
   twitterHandle?: string;
+  profileUrls?: string[];
+  approvedProfileUrls?: string[];
+  rejectedProfileUrls?: string[];
+  webDiscoveryEnabled: boolean;
+  firecrawlEnabled: boolean;
+  consentConfirmed: boolean;
   claimedSkills: string[];
   signal?: AbortSignal;
 }
@@ -60,6 +68,10 @@ export class HireSignalApi {
     return this.requestJson<HealthStatus>("/health", { signal }, false);
   }
 
+  async providerStatuses(signal?: AbortSignal): Promise<ProviderStatus[]> {
+    return this.requestJson<ProviderStatus[]>("/api/v1/social/providers", { signal });
+  }
+
   async scoreResume(input: ScoreResumeInput): Promise<ResumeScoreResponse> {
     const formData = new FormData();
     formData.append("job_description", input.jobDescription);
@@ -83,9 +95,16 @@ export class HireSignalApi {
       },
       body: JSON.stringify({
         candidate_email: input.candidateEmail,
+        candidate_name: input.candidateName,
         github_username: input.githubUsername.trim().replace(/^@/, ""),
         linkedin_url: input.linkedinUrl?.trim() || null,
         twitter_handle: input.twitterHandle?.trim() || null,
+        profile_urls: input.profileUrls ?? [],
+        approved_profile_urls: input.approvedProfileUrls ?? [],
+        rejected_profile_urls: input.rejectedProfileUrls ?? [],
+        web_discovery_enabled: input.webDiscoveryEnabled,
+        firecrawl_enabled: input.firecrawlEnabled,
+        consent_confirmed: input.consentConfirmed,
         claimed_skills: input.claimedSkills
       }),
       signal: input.signal

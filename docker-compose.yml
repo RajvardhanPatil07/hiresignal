@@ -47,6 +47,15 @@ services:
       - OPENROUTER_SITE_URL=${OPENROUTER_SITE_URL:-http://localhost:8000}
       - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-HireSignal}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+      - WEB_DISCOVERY_ENABLED=${WEB_DISCOVERY_ENABLED:-true}
+      - WEB_DISCOVERY_MAX_QUERIES=${WEB_DISCOVERY_MAX_QUERIES:-6}
+      - WEB_DISCOVERY_MAX_RESULTS=${WEB_DISCOVERY_MAX_RESULTS:-5}
+      - FIRECRAWL_ENABLED=${FIRECRAWL_ENABLED:-true}
+      - FIRECRAWL_MAX_PAGES=${FIRECRAWL_MAX_PAGES:-5}
       - LINKEDIN_API_KEY=${LINKEDIN_API_KEY:-}
       - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
       - TWITTER_API_KEY=${TWITTER_API_KEY:-}
@@ -99,6 +108,15 @@ services:
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_SITE_URL=${OPENROUTER_SITE_URL:-http://localhost:8000}
       - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-HireSignal}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+      - WEB_DISCOVERY_ENABLED=${WEB_DISCOVERY_ENABLED:-true}
+      - WEB_DISCOVERY_MAX_QUERIES=${WEB_DISCOVERY_MAX_QUERIES:-6}
+      - WEB_DISCOVERY_MAX_RESULTS=${WEB_DISCOVERY_MAX_RESULTS:-5}
+      - FIRECRAWL_ENABLED=${FIRECRAWL_ENABLED:-true}
+      - FIRECRAWL_MAX_PAGES=${FIRECRAWL_MAX_PAGES:-5}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
@@ -113,6 +131,11 @@ services:
         condition: service_healthy
     networks:
       - hiresignal-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/venv/bin/celery -A backend.celery_app inspect ping --timeout=5 | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # -------------------------------------------------------------------------
   # Celery Flower (Monitoring)
@@ -136,6 +159,11 @@ services:
         condition: service_started
     networks:
       - hiresignal-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/127.0.0.1/5555'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # -------------------------------------------------------------------------
   # Redis (Cache & Message Broker)
@@ -171,7 +199,7 @@ services:
     networks:
       - hiresignal-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/127.0.0.1/6333'"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -22,6 +22,7 @@ export interface ParsedResume {
   phone: string;
   skills: string[];
   raw_text: string;
+  profile_urls: string[];
   sections_found: string[];
   parse_quality: string;
 }
@@ -67,11 +68,84 @@ export interface TechVerification {
   confidence: number;
 }
 
+export interface ProfileEvidence {
+  platform: string;
+  url: string;
+  username?: string | null;
+  retrieved: boolean;
+  summary: string;
+  metrics: Record<string, unknown>;
+  skills: string[];
+  links: string[];
+  warnings: string[];
+  confidence: number;
+  source_type: string;
+  citation: string;
+}
+
+export interface EvidenceCitation {
+  platform: string;
+  url: string;
+  label: string;
+  excerpt: string;
+  confidence: number;
+}
+
+export interface IdentitySignal {
+  label: string;
+  status: string;
+  detail: string;
+  weight: number;
+}
+
+export interface IdentityMatch {
+  score: number;
+  level: string;
+  signals: IdentitySignal[];
+  warnings: string[];
+}
+
+export interface ScoreComponent {
+  name: string;
+  score: number;
+  max_score: number;
+  detail: string;
+}
+
+export interface SocialScoreBreakdown {
+  components: ScoreComponent[];
+  total: number;
+  confidence: number;
+}
+
+export interface ProviderStatus {
+  provider: string;
+  configured: boolean;
+  enabled: boolean;
+  status: string;
+  detail: string;
+}
+
+export interface AuditEvent {
+  stage: string;
+  status: string;
+  message: string;
+  provider: string;
+  url: string;
+}
+
 export interface SocialScoreResponse {
   social_score: number;
   github: GitHubProfile;
   linkedin: { retrieved: boolean; [key: string]: unknown };
   twitter: { retrieved: boolean; [key: string]: unknown };
+  evidence_profiles: ProfileEvidence[];
+  source_citations: EvidenceCitation[];
+  identity_match: IdentityMatch;
+  score_breakdown: SocialScoreBreakdown;
+  provider_statuses: ProviderStatus[];
+  audit_events: AuditEvent[];
+  privacy_notes: string[];
   findings: Record<string, unknown>;
   tech_verification: TechVerification;
   red_flags: string[];
@@ -121,6 +195,11 @@ export interface CandidateSession {
   githubUsername: string;
   linkedinUrl: string;
   twitterHandle: string;
+  approvedProfileUrls: string[];
+  rejectedProfileUrls: string[];
+  webDiscoveryEnabled: boolean;
+  firecrawlEnabled: boolean;
+  consentConfirmed: boolean;
   emailOverride: string;
   nameOverride: string;
   status: SessionStatus;
@@ -141,6 +220,8 @@ export interface SerializableCandidate {
   githubUsername: string;
   linkedinUrl?: string;
   twitterHandle?: string;
+  approvedProfileUrls?: string[];
+  rejectedProfileUrls?: string[];
   status: SessionStatus;
   error?: string;
   resume?: ResumeScoreResponse;
