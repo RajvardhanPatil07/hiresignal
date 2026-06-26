@@ -39,8 +39,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy application code
-COPY . .
+# Copy application code as a package so backend.* imports resolve.
+COPY . ./backend
 
 # Create non-root user
 RUN useradd -m -u 1000 hiresignal && \

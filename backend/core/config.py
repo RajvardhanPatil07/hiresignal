@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     OPENROUTER_APP_NAME: str = "HireSignal"
     ANTHROPIC_API_KEY: Optional[str] = None
 
+    # Public developer profile APIs (optional)
+    GITHUB_TOKEN: Optional[str] = None
+    HUGGINGFACE_TOKEN: Optional[str] = None
+    BRAVE_SEARCH_API_KEY: Optional[str] = None
+    FIRECRAWL_API_KEY: Optional[str] = None
+    WEB_DISCOVERY_ENABLED: bool = True
+    WEB_DISCOVERY_MAX_QUERIES: int = 6
+    WEB_DISCOVERY_MAX_RESULTS: int = 5
+    FIRECRAWL_ENABLED: bool = True
+    FIRECRAWL_MAX_PAGES: int = 5
+
     # LinkedIn / Twitter (optional)
     LINKEDIN_API_KEY: Optional[str] = None
     LINKEDIN_CLIENT_SECRET: Optional[str] = None

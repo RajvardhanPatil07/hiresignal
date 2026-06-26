@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.models.schemas import SocialAnalyzeRequest
+
 
 # ---------------------------------------------------------------------------
 # Health Endpoint Tests
@@ -239,6 +241,17 @@ class TestSocialEndpoints:
         assert response.status_code == 200
         assert response.json()["module"] == "social"
 
+    def test_social_provider_status(self, client: TestClient, auth_headers: dict) -> None:
+        """Test provider status endpoint."""
+        response = client.get(
+            "/api/v1/social/providers",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        providers = {item["provider"]: item for item in response.json()}
+        assert "GitHub" in providers
+        assert "Firecrawl" in providers
+
     @pytest.mark.asyncio
     async def test_analyze_social_mock(
         self,
@@ -288,7 +301,7 @@ class TestSocialEndpoints:
 
     def test_analyze_social_validation(self, client: TestClient, auth_headers: dict) -> None:
         """Test social analysis request validation."""
-        # Missing github_username
+        # Missing all profile sources
         response = client.post(
             "/api/v1/social/analyze",
             headers=auth_headers,
@@ -297,6 +310,18 @@ class TestSocialEndpoints:
             },
         )
         assert response.status_code == 422
+
+        req = SocialAnalyzeRequest(
+            candidate_email="jane@example.com",
+            profile_urls=["https://huggingface.co/janesmith"],
+        )
+        assert req.profile_urls == ["https://huggingface.co/janesmith"]
+
+        name_only_req = SocialAnalyzeRequest(
+            candidate_email="jane@example.com",
+            candidate_name="Jane Smith",
+        )
+        assert name_only_req.candidate_name == "Jane Smith"
 
     def test_analyze_social_github_strip_at(self, client: TestClient, auth_headers: dict) -> None:
         """Test that @ prefix is stripped from GitHub username."""

@@ -8,9 +8,14 @@ export function createCandidateSession(file: File): CandidateSession {
   return {
     id: crypto.randomUUID(),
     file,
-    githubUsername: guessGitHubFromFilename(file.name),
+    githubUsername: "",
     linkedinUrl: "",
     twitterHandle: "",
+    approvedProfileUrls: [],
+    rejectedProfileUrls: [],
+    webDiscoveryEnabled: true,
+    firecrawlEnabled: true,
+    consentConfirmed: true,
     emailOverride: "",
     nameOverride: "",
     status: "queued",
@@ -18,6 +23,22 @@ export function createCandidateSession(file: File): CandidateSession {
     activeStep: "Queued",
     logs: [`Added ${file.name}`]
   };
+}
+
+export function githubUsernameFromUrls(urls: string[] = []): string {
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+      const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+      const [username] = parsed.pathname.split("/").filter(Boolean);
+      if (host === "github.com" && username && !["orgs", "users", "topics"].includes(username)) {
+        return username;
+      }
+    } catch {
+      // Ignore malformed profile URLs from parsed resume text.
+    }
+  }
+  return "";
 }
 
 export function guessGitHubFromFilename(fileName: string): string {
@@ -70,6 +91,8 @@ export function serializeCandidate(candidate: CandidateSession): SerializableCan
     githubUsername: candidate.githubUsername,
     linkedinUrl: candidate.linkedinUrl || undefined,
     twitterHandle: candidate.twitterHandle || undefined,
+    approvedProfileUrls: candidate.approvedProfileUrls,
+    rejectedProfileUrls: candidate.rejectedProfileUrls,
     status: candidate.status,
     error: candidate.error,
     resume: candidate.resume,

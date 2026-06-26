@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
+import io
 import json
 from unittest.mock import AsyncMock, patch
 
+from docx import Document
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 import pytest
 
 from backend.core.exceptions import FileValidationError, ResumeParsingError
 from backend.models.schemas import CandidateTier, ExperienceEntry, ParsedResume
 from backend.resume.parser import (
     _extract_certifications,
+    _extract_docx_text,
     _extract_education,
     _extract_email,
     _extract_experience,
     _extract_name,
     _extract_phone,
+    _extract_profile_urls,
+    _extract_uri_values,
+    _is_supported_profile_url,
     _extract_skills,
     parse_resume,
 )
@@ -53,6 +60,64 @@ class TestParserHelpers:
         assert "555" in phone
         assert "123" in phone
         assert "4567" in phone
+
+    def test_extract_profile_urls(self) -> None:
+        """Test public profile URL extraction from resume text."""
+        text = """
+        GitHub: github.com/janesmith
+        LinkedIn: https://linkedin.com/in/janesmith
+        ML: huggingface.co/janesmith
+        Practice: leetcode.com/u/janesmith.
+        """
+        urls = _extract_profile_urls(text)
+        assert "https://github.com/janesmith" in urls
+        assert "https://linkedin.com/in/janesmith" in urls
+        assert "https://huggingface.co/janesmith" in urls
+        assert "https://leetcode.com/u/janesmith" in urls
+
+    def test_extract_profile_urls_skips_empty_profile_roots(self) -> None:
+        """Test empty profile placeholders are ignored."""
+        text = "GitHub: https://github.com/ LinkedIn: https://linkedin.com/in/ Profile: github.com/janesmith"
+        urls = _extract_profile_urls(text)
+        assert "https://github.com/janesmith" in urls
+        assert "https://github.com/" not in urls
+        assert "https://linkedin.com/in/" not in urls
+
+    def test_is_supported_profile_url_accepts_owned_work(self) -> None:
+        """Test owned repository/project URLs are still accepted as useful evidence."""
+        assert _is_supported_profile_url("https://github.com/janesmith/project")
+        assert _is_supported_profile_url("https://huggingface.co/spaces/janesmith/demo")
+        assert not _is_supported_profile_url("https://github.com/topics/python")
+
+    def test_extract_uri_values_from_nested_link_metadata(self) -> None:
+        """Test URL extraction from nested PDF annotation metadata."""
+        metadata = {
+            "data": {
+                "A": {
+                    "URI": "https://www.linkedin.com/in/janesmith",
+                },
+            },
+            "extra": ["https://github.com/janesmith"],
+        }
+        urls = _extract_uri_values(metadata)
+        assert "https://www.linkedin.com/in/janesmith" in urls
+        assert "https://github.com/janesmith" in urls
+
+    def test_extract_docx_text_includes_hyperlink_targets(self) -> None:
+        """Test DOCX hyperlink relationships are included even when only label text is visible."""
+        doc = Document()
+        doc.add_paragraph("Jane Smith")
+        doc.add_paragraph("LinkedIn GitHub")
+        doc.part.relate_to("https://www.linkedin.com/in/janesmith", RT.HYPERLINK, is_external=True)
+        doc.part.relate_to("https://github.com/janesmith", RT.HYPERLINK, is_external=True)
+
+        content = io.BytesIO()
+        doc.save(content)
+
+        text = _extract_docx_text(content.getvalue())
+        urls = _extract_profile_urls(text)
+        assert "https://www.linkedin.com/in/janesmith" in urls
+        assert "https://github.com/janesmith" in urls
 
     def test_extract_name(self) -> None:
         """Test name extraction from resume."""
